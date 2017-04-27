@@ -1,83 +1,149 @@
 #!groovy
 
+
+
 node {
-    git url: 'https://github.com/jfrogtraining/docker-lifecycle-scripts.git'
 
-    // Get Artifactory server instance, defined in the Artifactory Plugin administration page.
-    def server = Artifactory.server('newartifact')
-    
-    def workspace = pwd()
-    
-    //def user = 'raghavb'
-    //def password = 'AKCp2V5euMXujN5ecnEs32vLDMsNsqpRbbHShye6qGuAQ2NNZBGsXAJkvDa6Mx9wtQEWbALHm'
-    
-    def BUILD_NUMBER = currentBuild.number
-
-    // Read the upload spec which was downloaded from github.
-    def uploadSpec = """{
-                          "files": [
-                            {
-                              "pattern": "$workspace/docker-app/*.*",
-                              "target": "docker-local2/"
-                            }
-                         ]
-                        }"""
-    
-    // Upload to Artifactory.
-    def buildInfo1 = server.upload spec: uploadSpec
-
-    // Read the upload spec and upload files to Artifactory.
-    def downloadSpec = """{
-                         "files": [
-                          {
-                              "pattern": "gradle-dev-local/**/webservice-1.*.war",
-                              "target": "$workspace/docker-app/war/"
-                            }
-                         ]
-                        }"""
-                        
-    def buildInfo2 = server.download spec: downloadSpec
-    
-    server.download(downloadSpec)
-    
-    dir ('docker-app'){
+   // Get some code from a GitHub repository
+   git url: 'https://github.com/jfrogtraining/docker-lifecycle-scripts'
+  def artServer = Artifactory.server('newartifact')
+  withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: 'artifactoryid',
+  usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD']]) {
+    def uname=env.USERNAME
+    def pw=env.PASSWORD
+    artServer.username=uname
+    artServer.password=pw
+    def curlstr="curl -u"+uname+':'+pw+" 'http://devapi.cloudmunch.com:8082/artifactory/"
+    def artDocker= Artifactory.docker(uname, pw)
+    def buildInfo = Artifactory.newBuildInfo()
+    dir('docker-framework') {
+      buildInfo.env.capture = true
+      // Mark the code checkout 'stage'....
+      sh 'ls -al'
+      stage('Resolve') {
+        def tomcatverstr=curlstr+ "api/search/latestVersion?g=org.apache&a=apache-tomcat&repos=tomcat-local'"
+        println(tomcatverstr)
+        sh tomcatverstr+' > tomcat/version.txt'
+        env.TOMCAT_VERSION=readFile('tomcat/version.txt')
+        sh 'echo $TOMCAT_VERSION'
+        //sh 'rm -rf docker-framework/tomcat'
+        //sh 'rm -rf docker-framework/jdk'
         
-    //Move the latest gradle war filename only - remove previous copy. 
-    //sh 'if [ -f war/*.war] ; then'
-    sh 'rm war/*.war'
-    //sh 'fi'
-    sh "find war -name '*.war' > warpathtemp"
-    def warPath = readFile('warpathtemp').trim()
-    print "DEBUG: parameter warPath = ${warPath}"
-    
-    int index = warPath.lastIndexOf("/");
-    def warFile = warPath.substring(index + 1);
-    print "DEBUG: parameter warFile = ${warFile}"
-    
-    print "DEBUG: parameter buildnumber = ${BUILD_NUMBER}"
-    
-    sh "mv $warPath war/${warFile}"   
-        
-    stage 'Docker build'
-    docker.build('gcartifactory-us.jfrog.info:5000/docker-app:100')
-    
-    stage 'Docker push'
-    docker.withRegistry('https://gcartifactory-us.jfrog.info:5000', '$user:$password') {
-    docker.image('docker-app').push('${BUILD_NUMBER}')
-    //sh "docker push gcartifactory-us.jfrog.info:5000/docker-app:100"
-    }
-    
-    sh 'rm -rf war/*.war'
-    //Retag image with latest
-    sh 'sed -E "s/@/$BUILD_NUMBER/" retag-gcartifactory.json > retag-gcartifactory_out.json'
-    sh 'cat retag-gcartifactory_out.json'
-    sh "curl --user '${user}:${password}' -X POST https://gcartifactory-us.jfrog.info/artifactory/api/plugins/execute/dockerRetag -T retag-gcartifactory_out.json"
-    
-    }
+        def downloadSpec = """{
+         "files": [
+          {
+           "pattern": "tomcat-local/java/jdk-8u91-linux-x64.tar.gz",
+           "target": "jdk/jdk-8-linux-x64.tar.gz",
+           "flat":"true"
+          },
+          {
+           "pattern": "tomcat-local/org/apache/apache-tomcat/apache-tomcat-"""+env.TOMCAT_VERSION+""".tar.gz",
+           "target": "tomcat/apache-tomcat-8.tar.gz",
+           "flat":"true"
+          }
+          ]
+        }"""
 
-    // Merge the upload and download build-info objects.
-    buildInfo1.append buildInfo2
-
-    // Publish the build to Artifactory
-    server.publishBuildInfo buildInfo1
+        artServer.download(downloadSpec, buildInfo)
+        sh 'pwd'
+        sh 'ls -al jdk'
+        sh 'ls -al tomcat'
+        sh 'echo download complete'
+      }
+      stage('docker build') {
+        buildInfo.env.collect()
+        println('starting build '+env.BUILD_NUMBER)
+        def tagName='us-demo-4x.jfrog.info:9002/docker-framework:'+env.BUILD_NUMBER
+        sh 'pwd'
+        sh 'ls -al'
+        sh 'cat Dockerfile'
+        docker.build(tagName)
+        artDocker.push(tagName, 'docker-dev-local', buildInfo)
+        artServer.publishBuildInfo(buildInfo)
+        println('Retagging Image')
+        sh 'sed -E "s/@/$BUILD_NUMBER/" retag.json > retag_out.json'
+        sh 'cat retag_out.json'
+        def retagstr=curlstr+"api/docker/docker-dev-local/v2/promote' -X POST -H 'Content-Type: application/json' -T retag_out.json"
+        sh retagstr
+      }
+    }
+  }
 }
+node {
+  git url: 'https://github.com/jfrogtraining/docker-lifecycle-scripts'
+  def artServer = Artifactory.server('newartifact')
+  withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: 'artifactoryid',
+  usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD']]) {
+    def uname=env.USERNAME
+    def pw=env.PASSWORD
+    artServer.username=uname
+    artServer.password=pw
+    def curlstr="curl -u"+uname+':'+pw+" 'http://devapi.cloudmunch.com:8082/artifactory/"
+    def artDocker= Artifactory.docker(uname, pw)
+    dir('docker-framework/framework-test')
+    {
+      stage('testing') {
+        println('Get the latest version of the tomcat war from libs-release-local repo.  We only want war files that have been released')
+        def warverstr=curlstr+ "api/search/latestVersion?g=org.jfrog.example.gradle&a=webservice&repos=libs-release-local'"
+        sh warverstr +' > war/version.txt'
+        env.WARVER=readFile('war/version.txt')
+        def downloadSpecWar = """{
+ "files": [
+  {
+   "pattern": "libs-release-local/org/jfrog/example/gradle/webservice/"""+env.WARVER+"""/*.war",
+   "target": "war/webservice.war",
+   "flat":"true"
+  }
+  ]
+}""" //"//DownloadSpec
+        println(downloadSpecWar)
+        artServer.download(downloadSpecWar)
+        def tagNameTest='104.154.19.237:9002/docker-framework-test:'+env.BUILD_NUMBER
+        docker.build(tagNameTest)
+        docker.image(tagNameTest).withRun('-p 8181:8181') {c ->
+          sleep 5
+          sh 'curl "http://localhost:8181/swampup/"'
+        }
+      }
+      stage('Xray scan')
+      {
+        def xrayConfig = [
+          //Mandatory parameters
+          'buildName'         : env.JOB_NAME,
+          'buildNumber'       : '41',
+
+          //Optional
+          'failBuild'        :false //Default
+        ]
+
+        // Scan xray build
+        def xrayResults = artServer.xrayScan xrayConfig
+        // Print full report from xray
+        echo xrayResults as String
+      }
+      stage('promote') {
+        def promotionConfig = [
+          // Mandatory parameters
+          'buildName'          : env.JOB_NAME,
+          'buildNumber'        : env.BUILD_NUMBER,
+          'targetRepo'         : 'docker-prod-local',
+
+          // Optional parameters
+          'comment'            : 'Framework works with latest version of application to pass test',
+          'sourceRepo'         : 'docker-dev-local',
+          'status'             : 'Released',
+          'includeDependencies': false,
+          'copy'               : true
+        ]
+
+        // Promote build
+        artServer.promote promotionConfig
+        sh 'sed -E "s/@/$BUILD_NUMBER/" retag.json > retag_out.json'
+        sh 'cat retag_out.json'
+        def retagstr=curlstr+"api/docker/docker-prod-local/v2/promote' -X POST -H 'Content-Type: application/json' -T retag_out.json"
+        sh retagstr
+      }
+    }
+  }
+}
+
