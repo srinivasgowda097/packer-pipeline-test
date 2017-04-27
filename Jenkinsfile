@@ -63,7 +63,7 @@ sh 'echo download complete'
  //  sh "${mvnHome}/bin/mvn -Dmaven.test.failure.ignore clean package"
   */
    // step([$class: 'JUnitResultArchiver', testResults: '**/target/surefire-reports/TEST-*.xml'])
-
+/*
     stage 'docker build'
     sh 'echo collecting'
     buildInfo.env.collect()
@@ -79,7 +79,7 @@ sh 'echo download complete'
     echo 'pushed docker image'
     artServer.publishBuildInfo(buildInfo)
     //sh 'docker push jfrogtraining-docker-dev.jfrog.io/docker-hello:$BUILD_NUMBER'
- /*   stage 'testing'
+    stage 'testing'
     dir('docker-framework/framework-test')
     {
         def warverstr=curlstr+ "api/search/latestVersion?g=org.jfrog.example.gradle&a=webservice&repos=libs-release-local'"
