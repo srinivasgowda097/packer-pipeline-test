@@ -21,7 +21,7 @@ def pw=env.PASSWORD
 artServer.username=uname
 artServer.password=pw
  sh 'echo credentials applied'
- def curlstr="curl -u"+uname+':'+pw+" 'https://jfrogtraining.jfrog.io/jfrogtraining/"
+ def curlstr="curl -u"+uname+':'+pw+" 'http://devapi.cloudmunch.com:8082/artifactory"
  def tomcatverstr=curlstr+ "api/search/latestVersion?g=org.apache&a=apache-tomcat&repos=tomcat-local'"
 println(tomcatverstr)
  sh tomcatverstr+' > docker-framework/tomcat/version.txt'
