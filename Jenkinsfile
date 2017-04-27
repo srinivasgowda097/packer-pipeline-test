@@ -14,7 +14,7 @@ node {
    sh 'echo starting'
    def buildInfo = Artifactory.newBuildInfo()
 buildInfo.env.capture = true
-withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: 'art-docker-ci',
+withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: 'artifactoryid',
 usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD']]) {
 def uname=env.USERNAME
 def pw=env.PASSWORD
