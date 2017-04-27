@@ -68,7 +68,7 @@ sh 'echo download complete'
     sh 'echo collecting'
     buildInfo.env.collect()
     sh 'echo starting build $BUILD_NUMBER'
-            def tagName='jfrogtraining-docker-dev.jfrog.io/docker-framework:'+env.BUILD_NUMBER
+            def tagName='hub.docker.com/r/srinivasgowda097/d_doccloud-main-2:'+env.BUILD_NUMBER
     dir('docker-framework') {
         docker.build(tagName)
     }
@@ -79,7 +79,7 @@ sh 'echo download complete'
     echo 'pushed docker image'
     artServer.publishBuildInfo(buildInfo)
     //sh 'docker push jfrogtraining-docker-dev.jfrog.io/docker-hello:$BUILD_NUMBER'
-    stage 'testing'
+ /*   stage 'testing'
     dir('docker-framework/framework-test')
     {
         def warverstr=curlstr+ "api/search/latestVersion?g=org.jfrog.example.gradle&a=webservice&repos=libs-release-local'"
@@ -96,7 +96,7 @@ sh 'echo download complete'
 }"""
     println(downloadSpecWar)
     artServer.download(downloadSpecWar)
-        def tagNameTest='gcartifactory-us.jfrog.info:5002/docker-framework-test:'+env.BUILD_NUMBER
+        def tagNameTest='d_devops123-main-1:'+env.BUILD_NUMBER
         docker.build(tagNameTest)
 withCredentials([[$class: 'UsernamePasswordMultiBinding', credentialsId: 'gcart-markg',
 usernameVariable: 'GCUSERNAME', passwordVariable: 'GCPASSWORD']]) { 
@@ -127,6 +127,7 @@ usernameVariable: 'GCUSERNAME', passwordVariable: 'GCPASSWORD']]) {
         sh 'cat retag_out.json'
         def retagstr=curlstr+"api/docker/docker-prod-local/v2/promote' -X POST -H 'Content-Type: application/json' -T retag_out.json"
        // sh retagstr
+       */
     }
 }
 }
