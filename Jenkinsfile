@@ -20,7 +20,7 @@ node {
       buildInfo.env.capture = true
       // Mark the code checkout 'stage'....
       sh 'ls -al'
-      stage('Resolve') {
+    /*  stage('Resolve') {
         def tomcatverstr=curlstr+ "api/search/latestVersion?g=org.apache&a=apache-tomcat&repos=tomcat-local'"
         println(tomcatverstr)
         sh tomcatverstr+' > tomcat/version.txt'
@@ -50,6 +50,7 @@ node {
         sh 'ls -al tomcat'
         sh 'echo download complete'
       }
+      */
       stage('docker build') {
         buildInfo.env.collect()
         println('starting build '+env.BUILD_NUMBER)
