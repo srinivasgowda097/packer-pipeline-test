@@ -8,7 +8,7 @@ node {
    stage 'resolve'
    sh 'echo cleaning up'
    sh 'rm -rf assets/war'
-   def artServer = Artifactory.server('artifactoryid')
+   def artServer = Artifactory.server('newartifact')
    sh 'echo starting'
    def buildInfo = Artifactory.newBuildInfo()
 buildInfo.env.capture = true
