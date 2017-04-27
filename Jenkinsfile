@@ -127,7 +127,7 @@ usernameVariable: 'GCUSERNAME', passwordVariable: 'GCPASSWORD']]) {
         sh 'cat retag_out.json'
         def retagstr=curlstr+"api/docker/docker-prod-local/v2/promote' -X POST -H 'Content-Type: application/json' -T retag_out.json"
        // sh retagstr
-       */
-    }
+       
+    }*/
 }
 }
